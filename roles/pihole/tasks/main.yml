@@ -1,0 +1,77 @@
+---
+- name: "Setting hostname to 'pihole'"
+  hostname:
+    name: pihole
+  tags: admin
+
+- name: 'Disable WIFI and Bluetooth'
+  copy:
+    src: ./files/raspi-blacklist.conf
+    dest: /etc/modprobe.d/raspi-blacklist.conf
+    mode: '0600'
+  tags: admin
+
+- name: "Download Pi-Hole installer"
+  get_url:
+      url: https://install.pi-hole.net
+      dest: ~/install-pihole.sh
+      mode: 0740
+  tags: pihole
+
+- name: Create pihole configuration directory
+  become: True
+  file:
+    name: "{{ fspath_pihole_config }}"
+    state: directory
+    owner: "{{ user_pihole }}"
+    group: "{{ group_pihole }}"
+    mode: 0755
+  tags: pihole
+
+- name: Create pihole configuration
+  become: True
+  template:
+    src: "setupVars.conf.j2"
+    dest: "{{ fspath_pihole_config }}/setupVars.conf"
+    owner: root
+    group: root
+    mode: 0644
+  tags: pihole
+
+- name: Set default DNS
+  become: True
+  template:
+    src: "etc_resolf.conf.j2"
+    dest: "/etc/resolv.conf"
+    owner: root
+    group: root
+    mode: 0644
+  tags: admin
+
+- name: Install Pi-Hole
+  shell: "~/install-pihole.sh --unattended"
+  register: dbg_install_pihole
+  tags: pihole
+
+- name: get password
+  shell: /bin/cat /tmp/pi-hole/password
+  register: password
+  ignore_errors: yes
+
+- name: clean up password
+  file:
+    path: /tmp/pi-hole/password
+    state: absent
+
+- name: set cron jobs
+  become: yes
+  become_user: root
+  cron:
+    name: "daily updater"
+    user: "www-data"
+    minute: "0"
+    hour: "0"
+    job: "/usr/local/bin/pihole -up"
+
+- debug:
+    msg: "Your password is {{ password.stdout_lines }}"

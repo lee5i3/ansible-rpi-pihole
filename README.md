@@ -43,7 +43,7 @@ Deploy using [ansible](http://www.ansible.com) (install instructions for ansible
 
 Or:
 ```
-ansible-playbook playbook.yml -i hosts --ask-pass --become -c paramiko
+ansible-playbook ./playbook.yml -i inventory/hosts.ini --ask-pass --become -c paramiko
 ```
 
 ## Installing Ansible on your computer
